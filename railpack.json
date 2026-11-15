@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "packages": {
+    "python": "3.12"
+  },
+  "deploy": {
+    "startCommand": "python token_server.py",
+    "aptPackages": ["...", "libopus0", "ffmpeg"]
+  }
+}
