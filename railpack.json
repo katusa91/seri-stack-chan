@@ -1,8 +1,5 @@
 {
   "$schema": "https://schema.railpack.com",
-  "packages": {
-    "python": "3.12"
-  },
   "deploy": {
     "aptPackages": ["...", "libopus0", "ffmpeg"]
   }
