@@ -13,4 +13,3 @@ flask-sock>=0.7
 simple-websocket>=1.0
 opuslib>=3.0.1
 webrtcvad-wheels>=2.0.14
--r requirements-xiaozhi.txt
