@@ -1,0 +1,11 @@
+flask
+flask-cors
+google-genai>=1.67.0
+gunicorn
+psycopg2-binary
+requests
+youtube-transcript-api
+yfinance
+pandas
+defusedxml
+mutagen
