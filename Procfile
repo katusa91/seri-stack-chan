@@ -1,0 +1,1 @@
+web: gunicorn token_server:app --bind 0.0.0.0:$PORT --worker-class gthread --threads 8 --workers 1 --timeout 0
