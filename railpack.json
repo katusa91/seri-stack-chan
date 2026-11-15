@@ -1,6 +1,7 @@
 {
   "$schema": "https://schema.railpack.com",
   "deploy": {
-    "aptPackages": ["...", "libopus0", "ffmpeg"]
+    "aptPackages": ["...", "libopus0", "ffmpeg"],
+    "startCommand": "gunicorn token_server:app --bind 0.0.0.0:$PORT --worker-class gthread --threads 8 --workers 1 --timeout 0"
   }
 }
