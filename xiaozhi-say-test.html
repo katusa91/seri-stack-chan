@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>스택찬 say 테스트</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root {
+    --bg: #f3f5f7; --panel: #ffffff; --ink: #1b2430; --mute: #5d6b7a; --line: #d5dce3;
+    --accent: #1f6f8b; --accent-ink: #ffffff; --ok: #1d7a4d; --warn: #9a6200; --bad: #b3261e;
+    --code: #eaeef2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161b22; --panel: #1f262f; --ink: #e6ebf0; --mute: #9aa7b5; --line: #323c48;
+      --accent: #5db4d3; --accent-ink: #0d1a21; --ok: #5fd39a; --warn: #e8b04a; --bad: #ff8a80;
+      --code: #121820;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 720px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { font-size: 20px; margin: 4px 0 0; }
+  .sub { color: var(--mute); margin: 0; font-size: 13.5px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  h2 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; font-size: 13px; color: var(--mute); margin: 10px 0 4px; }
+  input[type=text], input[type=password], input[type=number], textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--ink); font: inherit;
+  }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row > .grow { flex: 1 1 200px; }
+  button {
+    font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .badge { font-size: 13px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--mute); }
+  .badge.ok { color: var(--ok); border-color: var(--ok); }
+  .badge.warn { color: var(--warn); border-color: var(--warn); }
+  .badge.bad { color: var(--bad); border-color: var(--bad); }
+  pre, .log { background: var(--code); border-radius: 6px; padding: 8px 10px; margin: 8px 0 0; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px 16px; margin-top: 8px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink); margin: 6px 0 0; }
+  .chk input { margin: 0; }
+  .hint { font-size: 12.5px; color: var(--mute); margin: 6px 0 0; }
+  .log { max-height: 380px; overflow-y: auto; padding: 0; }
+  .entry { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  .entry:last-child { border-bottom: 0; }
+  .entry .head { display: flex; gap: 8px; flex-wrap: wrap; font-weight: 600; }
+  .entry.ok .head .st { color: var(--ok); }
+  .entry.bad .head .st { color: var(--bad); }
+  .entry.warn .head .st { color: var(--warn); }
+  .entry .body { color: var(--mute); }
+  .hidden { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>스택찬 say 테스트</h1>
+    <p class="sub">글자만 입력해서 서버의 <code>/xiaozhi/say</code>로 보내면, 연결된 스택찬이 스피커로 말합니다.</p>
+  </div>
+
+  <section>
+    <h2>1. 연결</h2>
+    <label for="base">서버 주소 (비우면 이 페이지를 연 주소)</label>
+    <input id="base" type="text" placeholder="https://내서버.up.railway.app" autocomplete="off">
+    <p class="hint">이 파일을 서버와 같은 주소에서 열면 가장 확실합니다. 다른 주소에서 열면 브라우저의 CORS 제한으로 <code>/xiaozhi/*</code> 호출이 막힐 수 있어요.</p>
+
+    <div id="authBox" class="hidden">
+      <label for="token">로그인 토큰 (Bearer)</label>
+      <div class="row">
+        <input id="token" class="grow" type="password" placeholder="구글 로그인하면 자동으로 채워져요" autocomplete="off">
+        <button id="saveToken" class="small" type="button">저장</button>
+        <button id="clearToken" class="small" type="button">지우기</button>
+      </div>
+      <div id="googleBtn" class="hidden" style="margin-top:10px"></div>
+      <p id="authMsg" class="hint"></p>
+    </div>
+
+    <div class="badges">
+      <span id="bServer" class="badge">서버 확인 중…</span>
+      <span id="bRobot" class="badge">스택찬 –</span>
+      <span id="bBusy" class="badge">상태 –</span>
+      <span id="bSleep" class="badge hidden">잠든 상태</span>
+    </div>
+    <pre id="statusRaw">(아직 조회 전)</pre>
+    <div class="row" style="margin-top:8px">
+      <button id="refresh" class="small" type="button">지금 다시 확인</button>
+      <label class="chk" style="margin:0"><input id="poll" type="checkbox" checked> 3초마다 자동 확인</label>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. 보낼 글</h2>
+    <label for="text">스택찬이 말할 문장</label>
+    <textarea id="text" placeholder="예) 안녕하세요, 테스트 중이에요. 소리가 잘 들리나요?"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="small sample" type="button" data-t="안녕하세요, 테스트 중이에요. 소리가 잘 들리나요?">짧은 문장</button>
+      <button class="small sample" type="button" data-t="오늘 날씨가 정말 좋네요. 창밖을 보니 햇살이 가득해요. 이런 날은 산책하기 딱 좋은 것 같아요. 같이 나가볼까요?">여러 문장</button>
+      <button class="small sample" type="button" data-t="하나, 둘, 셋, 넷, 다섯. 마이크 테스트, 하나 둘.">숫자 세기</button>
+    </div>
+
+    <div class="opts">
+      <label class="chk"><input id="split" type="checkbox"> 조각내서 순서대로 보내기</label>
+      <div>
+        <label for="chunk">조각 최소 글자 수</label>
+        <input id="chunk" type="number" min="5" max="400" value="40">
+      </div>
+      <div>
+        <label for="delay">조각 사이 대기(ms)</label>
+        <input id="delay" type="number" min="0" max="5000" step="50" value="300">
+      </div>
+      <label class="chk"><input id="force" type="checkbox"> 연결/말하는 중이어도 강제로 보내기</label>
+    </div>
+    <p class="hint">조각 전송은 pipe 화면이 대답을 스트리밍할 때와 같은 방식입니다 (<code>final:false</code>로 이어 보내고 마지막 조각만 <code>final:true</code>). 한 번에 최대 4000자까지 받아요.</p>
+    <p class="hint">live 모드에서도 이 경로는 Gemini Live 목소리가 아니라 서버 TTS(타입캐스트 등) 목소리로 읽습니다. 서버에 TTS 설정이 없으면 소리가 안 날 수 있어요.</p>
+
+    <div class="row" style="margin-top:12px">
+      <button id="send" class="primary" type="button">스택찬으로 보내기 (Ctrl+Enter)</button>
+      <button id="stop" type="button" disabled>중단</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">3. 전송 기록</h2>
+      <button id="clearLog" class="small" type="button">기록 지우기</button>
+    </div>
+    <div id="log" class="log"><div class="entry"><span class="body">아직 보낸 내용이 없어요.</span></div></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const AUTH_KEY = 'taeyeon_auth_token';   // 기존 웹앱/pipe 화면과 같은 키: 거기서 로그인했으면 그대로 이어져요
+  const BASE_KEY = 'xz_test_base';
+  let token = '';
+  try { token = localStorage.getItem(AUTH_KEY) || ''; } catch (_) {}
+  try { $('base').value = localStorage.getItem(BASE_KEY) || ''; } catch (_) {}
+  $('token').value = token;
+
+  let sending = false, stopFlag = false, sendCtl = null;
+  let last = { ok: false, connected: false, busy: false };
+  let pollTimer = null, authRequired = false, googleClientId = '';
+
+  const base = () => ($('base').value.trim() || location.origin).replace(/\/+$/, '');
+  const hdrs = (json) => Object.assign(json ? { 'Content-Type': 'application/json' } : {}, token ? { Authorization: 'Bearer ' + token } : {});
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function fetchT(url, opts, ms) {
+    const ctl = new AbortController();
+    const outer = opts && opts.signal;
+    if (outer) outer.addEventListener('abort', () => ctl.abort());
+    const tm = setTimeout(() => ctl.abort(), ms);
+    try { return await fetch(url, Object.assign({}, opts, { signal: ctl.signal })); }
+    finally { clearTimeout(tm); }
+  }
+
+  // ----- 상태 표시 -----
+  function setBadge(el, text, cls) { el.textContent = text; el.className = 'badge' + (cls ? ' ' + cls : ''); }
+
+  async function pollStatus() {
+    try {
+      const r = await fetchT(base() + '/xiaozhi/status', { headers: hdrs(false) }, 4000);
+      const raw = await r.text();
+      $('statusRaw').textContent = 'HTTP ' + r.status + '\n' + raw;
+      if (r.status === 401) {
+        last = { ok: false, connected: false, busy: false };
+        setBadge($('bServer'), '로그인 필요', 'bad'); setBadge($('bRobot'), '스택찬 –'); setBadge($('bBusy'), '상태 –');
+        showAuth('로그인이 필요하거나 만료됐어요.');
+        return last;
+      }
+      if (r.status === 404) {
+        last = { ok: false, connected: false, busy: false };
+        setBadge($('bServer'), '/xiaozhi 없음', 'bad'); setBadge($('bRobot'), '스택찬 –'); setBadge($('bBusy'), '상태 –');
+        $('statusRaw').textContent += '\n→ 브리지가 꺼져 있을 수 있어요. 서버에 XIAOZHI_KEY 환경변수가 있어야 /xiaozhi/* 라우트가 열립니다.';
+        return last;
+      }
+      if (!r.ok) {
+        last = { ok: false, connected: false, busy: false };
+        setBadge($('bServer'), 'HTTP ' + r.status, 'bad');
+        return last;
+      }
+      let j = {};
+      try { j = JSON.parse(raw); } catch (_) {}
+      last = { ok: true, connected: !!j.connected, busy: !!j.busy, asleep: !!j.asleep };
+      $('bSleep').classList.toggle('hidden', !(last.connected && last.asleep)); $('bSleep').classList.add('warn');
+      setBadge($('bServer'), '서버 응답 정상', 'ok');
+      setBadge($('bRobot'), last.connected ? '스택찬 연결됨' : '스택찬 연결 안 됨', last.connected ? 'ok' : 'bad');
+      setBadge($('bBusy'), !last.connected ? '상태 –' : (last.busy ? '말하는 중' : '대기 중'), !last.connected ? '' : (last.busy ? 'warn' : 'ok'));
+      return last;
+    } catch (e) {
+      last = { ok: false, connected: false, busy: false };
+      $('bSleep').classList.add('hidden'); setBadge($('bServer'), '서버에 연결 못 함', 'bad'); setBadge($('bRobot'), '스택찬 –'); setBadge($('bBusy'), '상태 –');
+      $('statusRaw').textContent = '요청 실패: ' + (e && e.message ? e.message : e) + '\n(주소, 네트워크, CORS를 확인하세요)';
+      return last;
+    }
+  }
+
+  function schedulePoll() {
+    clearInterval(pollTimer);
+    if ($('poll').checked) pollTimer = setInterval(() => { if (!sending && !document.hidden) pollStatus(); }, 3000);
+  }
+
+  // ----- 로그인 -----
+  function showAuth(msg) {
+    $('authBox').classList.remove('hidden');
+    $('authMsg').textContent = msg || '';
+    if (googleClientId) renderGoogle();
+  }
+  function renderGoogle() {
+    if (!window.google || !google.accounts || !google.accounts.id) { setTimeout(renderGoogle, 300); return; }
+    const w = $('googleBtn'); w.classList.remove('hidden'); w.innerHTML = '';
+    google.accounts.id.initialize({ client_id: googleClientId, callback: onGoogleCredential });
+    google.accounts.id.renderButton(w, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', locale: 'ko' });
+  }
+  async function onGoogleCredential(resp) {
+    $('authMsg').textContent = '로그인 확인 중…';
+    try {
+      const r = await fetch(base() + '/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.sessionToken) { $('authMsg').textContent = '허용되지 않은 구글 계정이에요.'; return; }
+      setToken(d.sessionToken);
+      $('authMsg').textContent = '로그인했어요.';
+      pollStatus();
+    } catch (_) { $('authMsg').textContent = '로그인 확인에 실패했어요. 네트워크를 확인해주세요.'; }
+  }
+  function setToken(t) {
+    token = t || ''; $('token').value = token;
+    try { token ? localStorage.setItem(AUTH_KEY, token) : localStorage.removeItem(AUTH_KEY); } catch (_) {}
+  }
+
+  async function loadConfig() {
+    try {
+      const d = await (await fetchT(base() + '/api/config', {}, 4000)).json();
+      authRequired = !!d.authRequired; googleClientId = d.googleClientId || '';
+      if (authRequired) showAuth(token ? '' : '이 서버는 구글 로그인이 필요해요.');
+    } catch (_) { /* 설정을 못 읽어도 상태 조회에서 원인이 드러나요 */ }
+  }
+
+  // ----- 글 조각내기 (pipe 화면과 비슷한 규칙: 문장 끝에서, 최소 글자 수 이상) -----
+  function splitText(text, min) {
+    const sentences = text.match(/[^.!?~…。！？\n]+[.!?~…。！？]*\s*/g) || [text];
+    const out = []; let buf = '';
+    for (const s of sentences) {
+      buf += s;
+      if (buf.trim().length >= min) { out.push(buf.trim()); buf = ''; }
+    }
+    if (buf.trim()) out.push(buf.trim());
+    return out.length ? out : [text];
+  }
+
+  // ----- 로그 -----
+  function clearLogPlaceholder() {
+    const first = $('log').firstElementChild;
+    if (first && first.dataset.empty === '1') first.remove();
+  }
+  $('log').firstElementChild.dataset.empty = '1';
+
+  function addLog(cls, title, bodyText) {
+    clearLogPlaceholder();
+    const e = document.createElement('div'); e.className = 'entry ' + cls;
+    const h = document.createElement('div'); h.className = 'head';
+    const t = document.createElement('span'); t.textContent = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+    const s = document.createElement('span'); s.className = 'st'; s.textContent = title;
+    h.append(t, s); e.append(h);
+    if (bodyText) { const b = document.createElement('div'); b.className = 'body'; b.textContent = bodyText; e.append(b); }
+    const log = $('log'); log.prepend(e);
+  }
+
+  const reasonOf = (st) => ({
+    401: '로그인이 만료됐어요',
+    404: '연결된 스택찬이 없어요 (no_device)',
+    409: '스택찬이 다른 대답을 하는 중이에요',
+  }[st] || '');
+
+  // ----- 전송 -----
+  async function postSay(tid, text, final, extra) {
+    const body = Object.assign({}, extra, { tid, text, final });
+    const t0 = performance.now();
+    const r = await fetchT(base() + '/xiaozhi/say', { method: 'POST', headers: hdrs(true), body: JSON.stringify(body), signal: sendCtl.signal }, 10000);
+    const raw = await r.text();
+    return { status: r.status, ok: r.ok, ms: Math.round(performance.now() - t0), raw, body };
+  }
+
+  async function send() {
+    const text = $('text').value.trim();
+    if (!text || sending) return;
+
+    const extra = {};
+
+    sending = true; stopFlag = false; sendCtl = new AbortController();
+    $('send').disabled = true; $('stop').disabled = false;
+    try {
+      if (!$('force').checked) {
+        const s = await pollStatus();
+        if (!s.ok) { addLog('bad', '보내지 않음', '서버 상태를 확인하지 못했어요. 위 연결 상태를 먼저 확인하세요. (강제로 보내려면 옵션을 켜세요)'); return; }
+        if (!s.connected) { addLog('warn', '보내지 않음', '스택찬이 서버에 연결돼 있지 않아요. 스택찬에게 말을 한 번 걸면 연결됩니다.'); return; }
+        if (s.busy) { addLog('warn', '보내지 않음', '스택찬이 아직 말하는 중이에요. 끝난 뒤 다시 보내세요.'); return; }
+      }
+
+      const tid = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const minLen = Math.max(5, parseInt($('chunk').value, 10) || 40);
+      const delay = Math.max(0, parseInt($('delay').value, 10) || 0);
+      const chunks = $('split').checked ? splitText(text, minLen) : [text];
+
+      for (let i = 0; i < chunks.length; i++) {
+        if (stopFlag) { addLog('warn', '중단됨', (i) + '/' + chunks.length + '조각까지 보냈어요. final 신호는 보내지 않았어요.'); return; }
+        const final = i === chunks.length - 1;
+        const label = chunks.length > 1 ? ' [' + (i + 1) + '/' + chunks.length + ']' : '';
+        try {
+          const res = await postSay(tid, chunks[i], final, extra);
+          const why = reasonOf(res.status);
+          addLog(res.ok ? 'ok' : (res.status === 409 ? 'warn' : 'bad'),
+            'HTTP ' + res.status + label + ' · ' + res.ms + 'ms' + (final ? ' · final' : ''),
+            '보낸 글: ' + chunks[i] + (res.raw ? '\n응답: ' + res.raw.slice(0, 300) : '') + (why && !res.ok ? '\n→ ' + why : ''));
+          if (!res.ok) return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') { addLog('warn', '중단됨 / 시간 초과' + label, '요청이 취소되었거나 10초 안에 응답이 없었어요.'); return; }
+          addLog('bad', '네트워크 오류' + label, String(e && e.message ? e.message : e));
+          return;
+        }
+        if (!final && delay) await sleep(delay);
+      }
+    } finally {
+      sending = false; $('send').disabled = false; $('stop').disabled = true; sendCtl = null;
+      pollStatus();
+    }
+  }
+
+  // ----- 이벤트 -----
+  $('send').addEventListener('click', send);
+  $('stop').addEventListener('click', () => { stopFlag = true; if (sendCtl) sendCtl.abort(); });
+  $('text').addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); send(); } });
+  document.querySelectorAll('.sample').forEach((b) => b.addEventListener('click', () => { $('text').value = b.dataset.t; $('text').focus(); }));
+  $('refresh').addEventListener('click', pollStatus);
+  $('poll').addEventListener('change', schedulePoll);
+  $('clearLog').addEventListener('click', () => { $('log').innerHTML = ''; addLog('', '기록을 지웠어요', ''); });
+  $('saveToken').addEventListener('click', () => { setToken($('token').value.trim()); pollStatus(); });
+  $('clearToken').addEventListener('click', () => { setToken(''); $('authMsg').textContent = '토큰을 지웠어요.'; pollStatus(); });
+  $('base').addEventListener('change', () => {
+    try { localStorage.setItem(BASE_KEY, $('base').value.trim()); } catch (_) {}
+    loadConfig(); pollStatus();
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pollStatus(); });
+
+  (async () => { await loadConfig(); await pollStatus(); schedulePoll(); })();
+})();
+</script>
+</body>
+</html>
